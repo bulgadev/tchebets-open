@@ -1,6 +1,6 @@
 # Tchebet
 
-A pari-mutuel sports-betting prototype. Users bet SIM/NÃO (yes/no) on questions ("Time X vai vencer o Time Y?"), odds move with the pool, winners split the losing pool minus a 3% house commission. See `docs/sistema_mercado_parimutuel.md` for the full math spec and `docs/roadmap.md` for current phase status.
+A pari-mutuel sports-betting prototype. Users bet SIM/NÃO (yes/no) on questions ("Time X vai vencer o Time Y?"), odds move with the pool, and winners split the losing pool minus a 3% house commission.
 
 ## Stack
 
@@ -21,7 +21,7 @@ Two independent Go services (no shared `go.work`, no shared module):
 podman compose up -d
 ```
 
-Brings up Postgres, Redis, `bet-backend` (internal network only), and `general-backend` on `localhost:8081`. First registered account becomes admin automatically (prototype-only bootstrap, see `docs/roadmap.md`) — admins can create/lock/resolve/cancel markets at `/admin/markets`.
+Brings up Postgres, Redis, `bet-backend` (internal network only), and `general-backend` on `localhost:8081`. First registered account becomes admin automatically for this prototype — admins can create, lock, resolve, and cancel markets at `/admin/markets`.
 
 `docker-compose.yml` bakes in dev-only Postgres credentials and a `SESSION_SECRET` — fine for local use, both must be overridden before deploying anywhere real.
 
@@ -53,8 +53,6 @@ podman compose --profile test run --rm general-backend-tests
 
 Sanitize-package unit tests have no dependencies and can also run directly: `cd general-backend && go test ./sanitize/...`.
 
-Test run transcripts and manual verification notes are logged in `docs/misc/` (`testsbet.md`, `testsgeneral.md`, `testsfrontend.md`) as each phase lands.
-
 ## Local frontend dev (outside Docker)
 
 Needs the `templ` CLI and the Tailwind standalone CLI on `PATH` (both pinned to the versions in `general-backend/Dockerfile`):
@@ -66,14 +64,3 @@ tailwindcss -i ./static/css/input.css -o ./static/css/tailwind.css --minify
 ```
 
 `bet-backend` has no host-published port, so `general-backend` run outside Docker can't reach it directly — either temporarily publish `bet-backend`'s port for local iteration, or just run the whole stack via compose and rebuild.
-
-## Design reference
-
-`design/` has static mockups (`prints/HomePage.png`, `prints/BetPage.png`) for the visual language (dark theme, SIM green / NÃO red, Barlow fonts) — reference only, not shipped code.
-
-## Docs
-
-- `docs/roadmap.md` — phase status and what's been decided/deferred along the way
-- `docs/original_context.md` — the original plan, so the project doesn't drift without noticing
-- `docs/sistema_mercado_parimutuel.md` — the betting math spec
-- `docs/misc/` — dated logs of test runs and findings per phase
