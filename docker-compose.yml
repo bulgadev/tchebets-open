@@ -1,0 +1,188 @@
+version: '3.8'
+
+name: tchebet
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: tchebet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bulga
+      POSTGRES_PASSWORD: waaglub4242@
+      POSTGRES_DB: tchebet_betting
+    ports:
+      # Bound to loopback only - no service outside this host needs Postgres;
+      # the app services reach it over the internal compose network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulga -d tchebet_betting"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tchebet-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bet-backend:
+    build:
+      context: ./bet-backend
+      dockerfile: Dockerfile
+    container_name: tchebet-bet-backend
+    restart: unless-stopped
+    # No host port mapping on purpose - bet-backend shouldn't take traffic
+    # straight from the frontend, only general-backend talks to it, over the
+    # internal docker network.
+    environment:
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=bulga
+      - DB_PASSWORD=waaglub4242@
+      - DB_NAME=tchebet_betting
+      - REDIS_HOST=redis:6379
+      - GIN_MODE=release
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  general-backend:
+    build:
+      context: ./general-backend
+      dockerfile: Dockerfile
+    container_name: tchebet-general-backend
+    restart: unless-stopped
+    ports:
+      # Loopback-only: the Cloudflare Tunnel (cloudflared) runs on this host and
+      # connects to localhost:8081, so nothing on the LAN/internet reaches the
+      # app except through the tunnel. Drop the 127.0.0.1: prefix only if you
+      # front it with your own reverse proxy instead.
+      - "127.0.0.1:8081:8081"
+    environment:
+      - PORT=8081
+      - BET_BACKEND_URL=http://bet-backend:8080
+      - GIN_MODE=release
+      # general-backend's own DB - accounts only (email/password/admin flag).
+      # Same postgres server/user bet-backend already uses, just a second
+      # logical database (tchebet_general vs tchebet_betting) - general-backend
+      # creates it itself on connect if missing (store/db.go).
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=bulga
+      - DB_PASSWORD=waaglub4242@
+      - DB_NAME=tchebet_general
+      # Signs the session cookie. Read from the untracked .env (compose variable
+      # substitution) so the real secret is never committed; falls back to the
+      # dev value only if .env is absent (local dev). MUST be a strong random
+      # value for the public deployment.
+      - SESSION_SECRET=${SESSION_SECRET:-dev-only-secret-change-me}
+      # Mark the session cookie Secure (HTTPS-only) for the public tunnel. Left
+      # false for plain-http localhost dev, where a Secure cookie is dropped.
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      # Bootstrap admin: the account registering with this email auto-becomes
+      # admin (fail-closed - unset means nobody auto-admins). From .env.
+      - INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-}
+      # Deposit mode: "fake" (default) keeps the R$ fake-money top-up form;
+      # "crypto" routes deposits/withdrawals through wallet-backend (real
+      # devnet USDC). Only "crypto" needs WALLET_BACKEND_URL / wallet-backend up.
+      - DEPOSIT_MODE=crypto
+      - WALLET_BACKEND_URL=http://wallet-backend:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bet-backend:
+        condition: service_started
+
+  # Custodial crypto edge (Phase 4). No host port - only general-backend calls
+  # it over the internal network. Holds custody state in its own logical DB
+  # (tchebet_wallet, self-provisioned); balances still live in bet-backend, which
+  # it credits/debits via the atomic /users/:id/adjust endpoint. Only needed when
+  # general-backend runs with DEPOSIT_MODE=crypto.
+  wallet-backend:
+    build:
+      context: ./wallet-backend
+      dockerfile: Dockerfile
+    container_name: tchebet-wallet-backend
+    restart: unless-stopped
+    environment:
+      - PORT=8082
+      - BET_BACKEND_URL=http://bet-backend:8080
+      # Solana DEVNET. Mainnet requires overriding the RPC URL + USDC mint and
+      # (hard security gate) moving the mnemonic behind a KMS/HSM.
+      - SOLANA_RPC_URL=https://api.devnet.solana.com
+      - USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+      # DEVNET-ONLY master seed. Read from the untracked .env (never committed) -
+      # generate a fresh one with `cd wallet-backend && WALLET_MNEMONIC= go run
+      # ./cmd/mnemonic` and NEVER reuse on mainnet. Derivation index 0 is the
+      # treasury/hot wallet; fund it with devnet SOL + USDC before testing so it
+      # can pay ATA rent, dispense the faucet, and sign withdrawals. The service
+      # fails closed if this is empty, so .env must be present.
+      - WALLET_MNEMONIC=${WALLET_MNEMONIC:?set WALLET_MNEMONIC in .env}
+      # Fixed BRL/USD rate: the ledger settles in whole R$, the chain in USDC.
+      - BRL_PER_USD=5.00
+      # Demo faucet grant per account (micro-USDC). Kept small so a modestly
+      # funded treasury serves several testers (each full deposit+withdraw cycle
+      # drains ~2x this from treasury, since user deposits pile up in per-user
+      # ATAs with no sweep). 1 USDC = R$5 at the rate above.
+      - FAUCET_MICRO_USDC=1000000
+      - DEPOSIT_POLL_SECONDS=15
+      # Withdrawal guardrails (micro-USDC). Above the manual-review threshold a
+      # withdrawal is debited and parked for an operator instead of auto-signed.
+      - WITHDRAWAL_MIN_MICRO_USDC=1000000
+      - WITHDRAWAL_MAX_MICRO_USDC=10000000000
+      - WITHDRAWAL_MANUAL_REVIEW_OVER=1000000000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=bulga
+      - DB_PASSWORD=waaglub4242@
+      - DB_NAME=tchebet_wallet
+      - GIN_MODE=release
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bet-backend:
+        condition: service_started
+
+  # One-shot test runner for general-backend's integration suite. Reuses the
+  # Dockerfile's builder stage (Go toolchain + source, no runtime binary) so
+  # it can `go test` against the real bet-backend over the compose network.
+  # Gated behind the "test" profile so it never starts on a normal `up`.
+  # Run with: podman compose --profile test run --rm general-backend-tests
+  general-backend-tests:
+    build:
+      context: ./general-backend
+      dockerfile: Dockerfile
+      target: builder
+    container_name: tchebet-general-backend-tests
+    environment:
+      - BET_BACKEND_URL=http://bet-backend:8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=bulga
+      - DB_PASSWORD=waaglub4242@
+      - DB_NAME=tchebet_general
+      - SESSION_SECRET=test-secret
+    depends_on:
+      - bet-backend
+      - postgres
+    command: ["go", "test", "-v", "./..."]
+    profiles: ["test"]
+
+volumes:
+  postgres_data:
+  redis_data:

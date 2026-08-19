@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Palette lifted straight from design/TcheBets.dc.html so templates read as
+   semantic Tailwind classes (bg-tche-card, text-tche-green, ...) instead of
+   a wall of arbitrary hex. */
+@theme {
+  --color-tche-bg: #0C0C0A;
+  --color-tche-card: #181816;
+  --color-tche-border: #272724;
+  --color-tche-text: #EDECEA;
+  --color-tche-muted: #7B7971;
+  --color-tche-dim: #4A4845;
+  --color-tche-gold: #F5B800;
+  --color-tche-green: #3DB870;
+  --color-tche-red: #E05252;
+  --color-tche-orange: #E88C30;
+
+  --font-condensed: "Barlow Condensed", sans-serif;
+  --font-body: "Barlow", sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-tche-bg);
+    color: var(--color-tche-text);
+    font-family: var(--font-body);
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #181816; }
+  ::-webkit-scrollbar-thumb { background: #2E2E2B; }
+}

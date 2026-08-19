@@ -1,0 +1,6 @@
+/bet-backend/bet-backend
+/general-backend/general-backend
+
+# Local secrets for the public demo (fresh devnet seed, session secret, admin
+# email). Never commit - compose reads these via variable substitution.
+/.env

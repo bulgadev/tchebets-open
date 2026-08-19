@@ -1,0 +1,153 @@
+package views
+
+templ Profile(nav NavVM, p ProfileVM, flash string) {
+	@Layout("Perfil", nav) {
+		<div class="max-w-[700px] mx-auto p-6">
+			<h1 class="font-[family-name:var(--font-condensed)] text-3xl font-extrabold tracking-tight mb-6">Minha Conta</h1>
+			if flash != "" {
+				<div class="bg-tche-green/10 border border-tche-green/30 text-tche-green text-[13px] rounded p-3 mb-4">{ flash }</div>
+			}
+			if p.CryptoMode {
+				@CryptoStatusPanel(p)
+				if p.DepositAddress != "" {
+					@WithdrawPanel(p)
+				}
+			} else {
+				<div class="bg-tche-card border border-tche-border rounded p-6 mb-5">
+					<div class="text-[13px] text-tche-muted mb-1">{ p.Email }</div>
+					<div class="font-[family-name:var(--font-condensed)] text-4xl font-extrabold tracking-tight mb-5">{ p.BalanceRs }</div>
+					<form method="POST" action="/profile/deposit" class="flex gap-2">
+						<div class="flex items-stretch border border-tche-border rounded bg-tche-bg overflow-hidden flex-1">
+							<span class="px-3.5 text-tche-muted text-sm font-medium flex items-center border-r border-tche-border">R$</span>
+							<input type="number" name="amount" value="100" min="1" class="flex-1 min-w-0 bg-transparent border-none text-tche-text text-lg px-3.5 py-2 font-[family-name:var(--font-condensed)] font-bold outline-none"/>
+						</div>
+						<button type="submit" class="bg-tche-gold text-tche-bg border-none px-6 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded hover:opacity-90">DEPOSITAR</button>
+					</form>
+				</div>
+			}
+			<div class="bg-tche-card border border-tche-border rounded p-6">
+				<div class="text-[11px] font-bold text-tche-muted uppercase tracking-wide mb-4">Histórico de Apostas</div>
+				if len(p.Bets) == 0 {
+					<div class="text-tche-muted text-sm">Nenhuma aposta ainda.</div>
+				}
+				<div class="flex flex-col gap-3">
+					for _, b := range p.Bets {
+						<div class="flex flex-col gap-2 border-b border-tche-border pb-3 last:border-none last:pb-0">
+							<a href={ templ.URL("/markets/" + b.MarketID) } class="flex justify-between items-center hover:opacity-80">
+								<div>
+									<div class="text-sm text-tche-text">{ b.MarketQuestion }</div>
+									<div class="text-[13px] text-tche-muted">Apostou { b.Outcome }</div>
+								</div>
+								<div class="flex items-center gap-4">
+									<span class="text-sm font-semibold">{ b.StakeLabel }</span>
+									<span class="text-[13px] text-tche-dim min-w-[70px] text-right">{ b.CreatedAtLabel }</span>
+								</div>
+							</a>
+							if b.MarketStatus == "OPEN" {
+								if b.IsListed {
+									<div class="flex items-center justify-between bg-tche-bg border border-tche-border rounded px-3 py-2">
+										<span class="text-[13px] text-tche-orange">Aguardando comprador · { b.AskingPriceLabel }</span>
+										<form method="POST" action={ templ.URL("/cancel-listing/" + b.ListingID) }>
+											<button type="submit" class="text-tche-red text-[13px] hover:underline">Cancelar venda</button>
+										</form>
+									</div>
+								} else {
+									<form method="POST" action={ templ.URL("/list-bet/" + b.BetID) } class="flex items-center gap-2">
+										<div class="flex items-stretch border border-tche-border rounded bg-tche-bg overflow-hidden">
+											<span class="px-3.5 text-tche-muted text-[13px] flex items-center border-r border-tche-border">R$</span>
+											<input type="number" name="asking_price" placeholder="Preço" min="1" class="w-24 bg-transparent border-none text-tche-text text-[13px] px-3 py-1.5 outline-none"/>
+										</div>
+										<button type="submit" class="text-tche-gold text-[13px] hover:underline">Vender</button>
+									</form>
+								}
+							}
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+// CryptoStatusPanel shows the balance + deposit address/QR and recent deposits.
+// It polls itself every 8s (hx-get) so a confirmed on-chain deposit reflects
+// without a manual refresh - the balance is credited by wallet-backend's poller.
+templ CryptoStatusPanel(p ProfileVM) {
+	<div id="crypto-status" hx-get="/profile/crypto-status" hx-trigger="every 8s" hx-swap="outerHTML" class="bg-tche-card border border-tche-border rounded p-6 mb-5">
+		<div class="text-[13px] text-tche-muted mb-1">{ p.Email }</div>
+		<div class="font-[family-name:var(--font-condensed)] text-4xl font-extrabold tracking-tight mb-5">{ p.BalanceRs }</div>
+		<div class="text-[11px] font-bold text-tche-muted uppercase tracking-wide mb-3">Depositar · USDC (Solana devnet)</div>
+		if p.NeedsDepositAddress {
+			<div class="bg-tche-bg border border-tche-border rounded p-4">
+				<div class="text-[13px] text-tche-muted mb-3">Crie seu endereço USDC para receber o dinheiro de teste e depósitos.</div>
+				<form method="POST" action="/profile/deposit-address">
+					<button type="submit" class="w-full bg-tche-gold text-tche-bg border-none rounded px-4 py-2.5 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide hover:opacity-90">CRIAR ENDEREÇO USDC</button>
+				</form>
+				<div class="text-[11px] text-tche-dim mt-2">A criação depende da Solana Devnet e pode levar alguns segundos.</div>
+			</div>
+		} else if p.DepositError != "" {
+			<div class="bg-tche-red/10 border border-tche-red/30 text-tche-red text-[13px] rounded p-3">{ p.DepositError }</div>
+		} else {
+			<div class="flex gap-4 items-start">
+				if p.DepositQR != "" {
+					<img src={ templ.SafeURL(p.DepositQR) } alt="QR do endereço de depósito" class="w-32 h-32 rounded bg-white p-1 shrink-0"/>
+				}
+				<div class="flex-1 min-w-0">
+					<div class="text-[12px] text-tche-muted mb-1">Envie USDC (SPL) para este endereço:</div>
+					<div class="font-mono text-[12px] break-all bg-tche-bg border border-tche-border rounded p-2 select-all">{ p.DepositAddress }</div>
+					<div class="text-[11px] text-tche-dim mt-2">O saldo atualiza sozinho quando a rede confirmar.</div>
+				</div>
+			</div>
+			<div class="mt-4 border-t border-tche-border pt-4">
+				<form method="POST" action="/profile/faucet">
+					<button type="submit" class="w-full bg-tche-green/15 text-tche-green border border-tche-green/30 rounded px-4 py-2.5 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide hover:bg-tche-green/25">PEGAR USDC DE TESTE</button>
+				</form>
+				<div class="text-[11px] text-tche-dim mt-2">Demo devnet: recebe USDC de teste da tesouraria para experimentar o fluxo depósito → aposta → saque. Uma vez por conta.</div>
+			</div>
+		}
+		if len(p.Deposits) > 0 {
+			<div class="mt-4 flex flex-col gap-1">
+				for _, d := range p.Deposits {
+					<div class="flex justify-between items-center text-[12px] border-t border-tche-border pt-1.5">
+						<span class="text-tche-muted">{ d.Asset } · { d.Short }</span>
+						<span class="flex items-center gap-2">
+							<span class="text-tche-dim">{ d.StatusLabel }</span>
+							<span class="text-tche-text">{ d.AmountLabel }</span>
+						</span>
+					</div>
+				}
+			</div>
+		}
+	</div>
+}
+
+// WithdrawPanel is the crypto payout form (destination + R$ amount) plus a
+// recent-withdrawals status list.
+templ WithdrawPanel(p ProfileVM) {
+	<div class="bg-tche-card border border-tche-border rounded p-6 mb-5">
+		<div class="text-[11px] font-bold text-tche-muted uppercase tracking-wide mb-3">Sacar · USDC</div>
+		<form method="POST" action="/profile/withdraw" class="flex flex-col gap-2">
+			<input type="text" name="dest_address" placeholder="Endereço Solana de destino" class="w-full bg-tche-bg border border-tche-border rounded text-tche-text font-mono text-[12px] px-3 py-2 outline-none"/>
+			<div class="flex gap-2">
+				<div class="flex items-stretch border border-tche-border rounded bg-tche-bg overflow-hidden flex-1">
+					<span class="px-3.5 text-tche-muted text-sm font-medium flex items-center border-r border-tche-border">R$</span>
+					<input type="number" name="amount" value="10" min="1" class="flex-1 min-w-0 bg-transparent border-none text-tche-text text-lg px-3.5 py-2 font-[family-name:var(--font-condensed)] font-bold outline-none"/>
+				</div>
+				<button type="submit" class="bg-tche-gold text-tche-bg border-none px-6 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded hover:opacity-90">SACAR</button>
+			</div>
+		</form>
+		if len(p.Withdrawals) > 0 {
+			<div class="mt-4 flex flex-col gap-1">
+				for _, w := range p.Withdrawals {
+					<div class="flex justify-between items-center text-[12px] border-t border-tche-border pt-1.5">
+						<span class="text-tche-muted">{ w.Dest } · { w.Short }</span>
+						<span class="flex items-center gap-2">
+							<span class="text-tche-dim">{ w.StatusLabel }</span>
+							<span class="text-tche-text">{ w.AmountLabel }</span>
+						</span>
+					</div>
+				}
+			</div>
+		}
+	</div>
+}

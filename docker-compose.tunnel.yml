@@ -1,0 +1,18 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.1
+    container_name: tchebet-cloudflared
+    restart: unless-stopped
+    command:
+      - tunnel
+      - run
+      - --credentials-file
+      - /run/secrets/tchebets.json
+      - --url
+      - http://general-backend:8081
+      - eb54f4c2-38a4-455f-9d78-4397d999de3f
+    volumes:
+      - ./secrets/tchebets.json:/run/secrets/tchebets.json:ro
+    depends_on:
+      general-backend:
+        condition: service_started

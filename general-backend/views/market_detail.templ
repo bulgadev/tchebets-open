@@ -1,0 +1,210 @@
+package views
+
+import "strconv"
+
+templ MarketDetail(nav NavVM, m MarketDetailVM) {
+	@Layout(m.Question, nav) {
+		<div class="max-w-[1100px] mx-auto p-6">
+			<a href="/" class="text-tche-muted text-sm mb-6 inline-block hover:text-tche-text">← Todos os jogos</a>
+			<div class="mb-7">
+				<div class="flex items-center gap-2.5 mb-2.5">
+					if m.IsLive {
+						<div class="flex items-center gap-1 bg-tche-red/10 border border-tche-red/30 px-2 py-0.5 rounded">
+							<span class="w-1.5 h-1.5 bg-tche-red rounded-full inline-block"></span>
+							<span class="text-[11px] font-bold text-tche-red tracking-wide">AO VIVO</span>
+						</div>
+					}
+					if m.Status == "LOCKED" {
+						<div class="bg-tche-orange/10 border border-tche-orange/30 px-2 py-0.5 rounded">
+							<span class="text-[11px] font-bold text-tche-orange tracking-wide">AGUARDANDO RESULTADO</span>
+						</div>
+					}
+					if m.Status == "RESOLVED" {
+						<div class="bg-tche-border px-2 py-0.5 rounded">
+							<span class="text-[11px] font-bold text-tche-muted tracking-wide">RESOLVIDO</span>
+						</div>
+					}
+					if m.Status == "CANCELLED" {
+						<div class="bg-tche-border px-2 py-0.5 rounded">
+							<span class="text-[11px] font-bold text-tche-muted tracking-wide">CANCELADO</span>
+						</div>
+					}
+					<span class="text-[13px] text-tche-muted">{ m.CreatedAtLabel }</span>
+				</div>
+				<h1 class="font-[family-name:var(--font-condensed)] text-4xl font-bold tracking-tight leading-tight max-w-[700px]">{ m.Question }</h1>
+				<div class="mt-2.5 text-[13px] text-tche-muted">{ strconv.Itoa(m.Bettors) } apostadores · Vol. { m.VolumeLabel }</div>
+			</div>
+			<div class="grid gap-5 items-start" style="grid-template-columns: 1fr 340px;">
+				<div>
+					<div class="bg-tche-card border border-tche-border p-7 rounded mb-3.5">
+						<div class="flex justify-between items-end mb-5">
+							<div>
+								<div class="text-[11px] text-tche-muted font-bold tracking-widest uppercase mb-2">SIM</div>
+								<div class="font-[family-name:var(--font-condensed)] text-7xl font-extrabold text-tche-green leading-none tracking-tighter">{ strconv.Itoa(m.SimPct) }%</div>
+								<div class="text-[13px] text-tche-muted mt-1.5">{ m.SimPriceLabel } por cota</div>
+							</div>
+							<div class="text-right">
+								<div class="text-[11px] text-tche-muted font-bold tracking-widest uppercase mb-2">NÃO</div>
+								<div class="font-[family-name:var(--font-condensed)] text-7xl font-extrabold text-tche-red leading-none tracking-tighter">{ strconv.Itoa(m.NaoPct) }%</div>
+								<div class="text-[13px] text-tche-muted mt-1.5">{ m.NaoPriceLabel } por cota</div>
+							</div>
+						</div>
+						<div class="h-2 flex overflow-hidden rounded bg-tche-border">
+							<div class="bg-tche-green" style={ "width: " + strconv.Itoa(m.SimPct) + "%" }></div>
+							<div class="flex-1 bg-tche-red"></div>
+						</div>
+						<div class="mt-4.5 pt-4.5 border-t border-tche-border text-[13px] text-tche-muted leading-relaxed">
+							Cada cota SIM custa <strong class="text-tche-text font-semibold">{ m.SimPriceLabel }</strong> · Cada cota NÃO custa <strong class="text-tche-text font-semibold">{ m.NaoPriceLabel }</strong> · Se o resultado correto ganhar, cada cota vira R$ 1,00
+						</div>
+					</div>
+
+					<div class="bg-tche-card border border-tche-border p-5 rounded mb-3.5">
+						<div class="text-[11px] font-bold text-tche-muted uppercase tracking-wide mb-4">Histórico de Probabilidade · SIM</div>
+						<svg viewBox="0 0 500 70" class="w-full h-[70px] block overflow-visible">
+							<polyline points={ m.SparklinePoly } fill="none" stroke="#3DB870" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+						</svg>
+					</div>
+
+					<div class="bg-tche-card border border-tche-border p-5 rounded mb-3.5">
+						<div class="text-[11px] font-bold text-tche-muted uppercase tracking-wide mb-4.5">Atividade Recente</div>
+						<div class="flex flex-col gap-4">
+							if len(m.Activity) == 0 {
+								<div class="text-tche-muted text-sm">Nenhuma aposta ainda - seja o primeiro.</div>
+							}
+							for _, a := range m.Activity {
+								<div class="flex justify-between items-center">
+									<div class="flex items-center gap-2 text-sm">
+										if a.IsSim {
+											<span class="w-2 h-2 bg-tche-green rounded-sm inline-block flex-shrink-0"></span>
+										} else {
+											<span class="w-2 h-2 bg-tche-red rounded-sm inline-block flex-shrink-0"></span>
+										}
+										<span>{ a.MaskedLabel } apostou { a.Outcome }</span>
+									</div>
+									<div class="flex items-center gap-4">
+										if a.IsSim {
+											<span class="text-sm font-semibold text-tche-green">{ a.StakeLabel }</span>
+										} else {
+											<span class="text-sm font-semibold text-tche-red">{ a.StakeLabel }</span>
+										}
+										<span class="text-[13px] text-tche-dim min-w-[56px] text-right">{ a.RelativeTime }</span>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+
+					if len(m.ForSale) > 0 {
+						<div class="bg-tche-card border border-tche-border p-5 rounded">
+							<div class="text-[11px] font-bold text-tche-muted uppercase tracking-wide mb-4.5">À Venda</div>
+							<div class="flex flex-col gap-3">
+								for _, item := range m.ForSale {
+									<div class="flex justify-between items-center">
+										<div class="flex items-center gap-2 text-sm">
+											if item.IsSim {
+												<span class="w-2 h-2 bg-tche-green rounded-sm inline-block flex-shrink-0"></span>
+											} else {
+												<span class="w-2 h-2 bg-tche-red rounded-sm inline-block flex-shrink-0"></span>
+											}
+											<span>{ item.SellerMaskedLabel } vende { item.Outcome } ({ item.StakeLabel })</span>
+										</div>
+										<div class="flex items-center gap-3">
+											<span class="text-sm font-semibold">{ item.AskingPriceLabel }</span>
+											if item.IsMine {
+												<span class="text-[13px] text-tche-muted">Sua listagem</span>
+											} else if nav.LoggedIn {
+												<form hx-post={ "/buy-listing/" + item.ListingID } hx-target={ "#buy-result-" + item.ListingID } hx-swap="innerHTML">
+													<button type="submit" class="bg-tche-gold text-tche-bg px-3 py-1.5 font-[family-name:var(--font-condensed)] font-bold text-[13px] rounded hover:opacity-90">COMPRAR</button>
+												</form>
+											} else {
+												<a href={ templ.URL("/login?next=/markets/" + m.ID) } class="text-tche-gold text-[13px] hover:underline">Entrar para comprar</a>
+											}
+										</div>
+									</div>
+									<div id={ "buy-result-" + item.ListingID }></div>
+								}
+							</div>
+						</div>
+					}
+				</div>
+
+				<div class="bg-tche-card border border-tche-border p-6 rounded sticky top-[72px]"
+					x-data={ betSlipData(m.SimPct, m.NaoPct) }
+				>
+					if m.CanBet {
+						<div class="grid grid-cols-2 gap-2 mb-6">
+							<button @click="side='sim'" :class="side==='sim' ? 'bg-tche-green text-tche-bg border-tche-green' : 'bg-transparent text-tche-muted border-tche-border'" class="py-3.5 font-[family-name:var(--font-condensed)] font-extrabold text-xl tracking-wide rounded border-2">SIM</button>
+							<button @click="side='nao'" :class="side==='nao' ? 'bg-tche-red text-white border-tche-red' : 'bg-transparent text-tche-muted border-tche-border'" class="py-3.5 font-[family-name:var(--font-condensed)] font-extrabold text-xl tracking-wide rounded border-2">NÃO</button>
+						</div>
+						<div class="text-[13px] text-tche-muted mb-2 font-medium">Quanto quer apostar?</div>
+						<div class="grid grid-cols-4 gap-1.5 mb-2">
+							<button @click="amount=10" class="bg-[#242422] border border-tche-border text-tche-text py-2 text-[13px] rounded hover:bg-[#2E2E2B]">R$10</button>
+							<button @click="amount=50" class="bg-[#242422] border border-tche-border text-tche-text py-2 text-[13px] rounded hover:bg-[#2E2E2B]">R$50</button>
+							<button @click="amount=100" class="bg-[#242422] border border-tche-border text-tche-text py-2 text-[13px] rounded hover:bg-[#2E2E2B]">R$100</button>
+							<button @click="amount=500" class="bg-[#242422] border border-tche-border text-tche-text py-2 text-[13px] rounded hover:bg-[#2E2E2B]">R$500</button>
+						</div>
+						<div class="flex items-stretch border border-tche-border rounded bg-tche-bg overflow-hidden mb-6">
+							<span class="px-3.5 text-tche-muted text-sm font-medium flex items-center border-r border-tche-border">R$</span>
+							<input type="number" x-model.number="amount" class="flex-1 min-w-0 bg-transparent border-none text-tche-text text-xl px-3.5 py-2.5 font-[family-name:var(--font-condensed)] font-bold outline-none"/>
+						</div>
+						<div class="h-px bg-tche-border mb-5"></div>
+						<div class="mb-1.5 text-[13px] text-tche-muted">
+							Se <strong :class="side==='sim' ? 'text-tche-green' : 'text-tche-red'" x-text="side==='sim' ? 'SIM' : 'NÃO'"></strong> ganhar, você recebe:
+						</div>
+						<div class="font-[family-name:var(--font-condensed)] text-5xl font-extrabold leading-none tracking-tight mb-2" x-text="fmtMoney(winnings())"></div>
+						<div class="text-sm text-tche-green font-semibold mb-5" x-text="'+ ' + fmtMoney(profit()) + ' de lucro'"></div>
+						<div class="flex justify-between items-center py-3 border-t border-b border-tche-border mb-5 text-[13px]">
+							<span class="text-tche-muted">Chance de ganhar</span>
+							<strong class="font-[family-name:var(--font-condensed)] text-[17px]" x-text="chancePct() + '%'"></strong>
+						</div>
+						if m.LowLiquidity {
+							<div class="bg-tche-orange/[0.07] border border-tche-orange/20 rounded p-3.5 mb-4 text-[13px] text-tche-orange leading-relaxed">
+								Pouca liquidez nessa aposta. Se a aposta for muito grande o preco pode mudar antes de vc confirmar.
+							</div>
+						}
+						if nav.LoggedIn {
+							<form hx-post={ "/markets/" + m.ID + "/place-bet" } hx-target="#bet-result" hx-swap="innerHTML">
+								<input type="hidden" name="outcome" x-bind:value="side==='sim' ? 'SIM' : 'NÃO'" />
+								<input type="hidden" name="stake" x-bind:value="amount" />
+								<button type="submit" class="w-full bg-tche-gold text-tche-bg border-none py-4 font-[family-name:var(--font-condensed)] font-extrabold text-xl tracking-wide rounded block hover:opacity-90">APOSTAR AGORA</button>
+							</form>
+						} else {
+							<a href={ templ.URL("/login?next=/markets/" + m.ID) } class="w-full bg-tche-gold text-tche-bg border-none py-4 font-[family-name:var(--font-condensed)] font-extrabold text-xl tracking-wide rounded block text-center hover:opacity-90">ENTRAR PARA APOSTAR</a>
+						}
+						<div id="bet-result" class="mt-4"></div>
+					} else {
+						<div class="text-tche-muted text-sm text-center py-6">Este mercado não está mais aberto para apostas ({ m.Status }).</div>
+					}
+					<div class="mt-3.5 text-center text-[11px] text-tche-dim leading-relaxed">
+						Dinheiro fake btw
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+// betSlipData ports the mockup's support.js renderVals() payout math into an
+// Alpine x-data blob - always just a client-side preview, the real payout
+// math still lives in bet-backend and is server-authoritative.
+func betSlipData(simPct, naoPct int) string {
+	return `{
+		side: 'sim',
+		amount: 100,
+		simPct: ` + strconv.Itoa(simPct) + `,
+		naoPct: ` + strconv.Itoa(naoPct) + `,
+		chancePct() { return this.side === 'sim' ? this.simPct : this.naoPct; },
+		winnings() {
+			const pct = this.chancePct();
+			if (pct <= 0) return 0;
+			return this.amount * (100 / pct);
+		},
+		profit() { return this.winnings() - this.amount; },
+		fmtMoney(n) {
+			if (!isFinite(n) || n < 0) n = 0;
+			const fixed = n.toFixed(2);
+			const [i, d] = fixed.split('.');
+			return 'R$ ' + i.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + d;
+		}
+	}`
+}

@@ -1,0 +1,153 @@
+package views
+
+templ AdminMarketsPage(nav NavVM, markets []AdminMarketRowVM, errMsg string) {
+	@Layout("Admin", nav) {
+		<div class="max-w-[900px] mx-auto p-6">
+			<div class="flex items-center justify-between mb-6">
+				<h1 class="font-[family-name:var(--font-condensed)] text-3xl font-extrabold tracking-tight">Admin · Mercados</h1>
+				<div class="flex items-center gap-2">
+					<a href="/admin/users" class="border border-tche-border text-tche-muted px-4 py-2.5 font-[family-name:var(--font-condensed)] font-bold text-sm rounded hover:text-tche-text">USUÁRIOS</a>
+					<a href="/admin/markets/new" class="bg-tche-gold text-tche-bg px-5 py-2.5 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded hover:opacity-90">+ NOVO MERCADO</a>
+				</div>
+			</div>
+			if errMsg != "" {
+				<div class="bg-tche-red/10 border border-tche-red/30 text-tche-red text-[13px] rounded p-3 mb-4">{ errMsg }</div>
+			}
+			<table class="w-full border border-tche-border rounded overflow-hidden text-sm">
+				<thead>
+					<tr class="bg-tche-card text-tche-muted text-[11px] uppercase tracking-wide text-left">
+						<th class="px-4 py-3 font-semibold">Pergunta</th>
+						<th class="px-4 py-3 font-semibold">Status</th>
+						<th class="px-4 py-3 font-semibold">Volume</th>
+						<th class="px-4 py-3 font-semibold">Ações</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, m := range markets {
+						<tr id={ "market-row-" + m.ID } class="border-t border-tche-border">
+							<td class="px-4 py-3"><a href={ templ.URL("/markets/" + m.ID) } class="hover:underline">{ m.Question }</a></td>
+							<td class="px-4 py-3 text-tche-muted">{ m.Status }</td>
+							<td class="px-4 py-3 text-tche-muted">{ m.VolumeLabel }</td>
+							<td class="px-4 py-3">
+								if m.Status == "OPEN" {
+									<form method="POST" action={ templ.URL("/admin/markets/" + m.ID + "/lock") } class="inline">
+										<button type="submit" class="text-tche-orange text-[13px] hover:underline">Travar</button>
+									</form>
+								}
+								if m.Status == "LOCKED" {
+									<form method="POST" action={ templ.URL("/admin/markets/" + m.ID + "/resolve") } class="inline flex gap-2 items-center">
+										<select name="winning_outcome" class="bg-tche-bg border border-tche-border rounded text-[13px] px-1.5 py-1">
+											<option value="SIM">SIM</option>
+											<option value="NÃO">NÃO</option>
+										</select>
+										<button type="submit" class="text-tche-green text-[13px] hover:underline">Resolver</button>
+									</form>
+								}
+								if m.Status == "OPEN" || m.Status == "LOCKED" {
+									<form method="POST" action={ templ.URL("/admin/markets/" + m.ID + "/cancel") } class="inline ml-2">
+										<button type="submit" class="text-tche-red text-[13px] hover:underline">Cancelar</button>
+									</form>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
+
+templ AdminNewMarketPage(nav NavVM, errMsg string, teams []string) {
+	@Layout("Novo Mercado", nav) {
+		<div class="max-w-[500px] mx-auto p-6" x-data="{mode: 'times', teamA: '', teamB: ''}">
+			<h1 class="font-[family-name:var(--font-condensed)] text-3xl font-extrabold tracking-tight mb-6">Novo Mercado</h1>
+			if errMsg != "" {
+				<div class="bg-tche-red/10 border border-tche-red/30 text-tche-red text-[13px] rounded p-3 mb-4">{ errMsg }</div>
+			}
+			<div class="grid grid-cols-2 gap-2 mb-4">
+				<button
+					type="button"
+					@click="mode='times'"
+					:class="mode==='times' ? 'bg-tche-gold text-tche-bg border-tche-gold' : 'bg-transparent text-tche-muted border-tche-border'"
+					class="py-2.5 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded border-2"
+				>ESCOLHER TIMES</button>
+				<button
+					type="button"
+					@click="mode='manual'"
+					:class="mode==='manual' ? 'bg-tche-gold text-tche-bg border-tche-gold' : 'bg-transparent text-tche-muted border-tche-border'"
+					class="py-2.5 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded border-2"
+				>MANUAL</button>
+			</div>
+			<form method="POST" action="/admin/markets" class="bg-tche-card border border-tche-border rounded p-6 flex flex-col gap-3">
+				<div x-show="mode==='times'">
+					<label class="text-[13px] text-tche-muted">Time A (SIM)</label>
+					<select name="team_a" x-model="teamA" class="w-full bg-tche-bg border border-tche-border rounded px-3.5 py-2.5 text-tche-text outline-none focus:border-tche-dim mb-2">
+						<option value="">Selecione...</option>
+						for _, team := range teams {
+							<option value={ team }>{ team }</option>
+						}
+					</select>
+					<label class="text-[13px] text-tche-muted">Time B (NÃO)</label>
+					<select name="team_b" x-model="teamB" class="w-full bg-tche-bg border border-tche-border rounded px-3.5 py-2.5 text-tche-text outline-none focus:border-tche-dim">
+						<option value="">Selecione...</option>
+						for _, team := range teams {
+							<option value={ team }>{ team }</option>
+						}
+					</select>
+					<div class="text-[13px] text-tche-muted mt-3" x-show="teamA &amp;&amp; teamB" x-text="teamA + ' vencerá o ' + teamB + '?'"></div>
+				</div>
+				<div x-show="mode==='manual'">
+					<label class="text-[13px] text-tche-muted">Pergunta (SIM/NÃO)</label>
+					<input name="question" type="text" placeholder="Ex: Time X vai vencer o Time Y?" x-bind:required="mode==='manual'" class="w-full bg-tche-bg border border-tche-border rounded px-3.5 py-2.5 text-tche-text placeholder-tche-muted outline-none focus:border-tche-dim"/>
+				</div>
+				<label class="text-[13px] text-tche-muted mt-2">Seed inicial (por lado, opcional)</label>
+				<input name="seed" type="number" value="0" min="0" class="bg-tche-bg border border-tche-border rounded px-3.5 py-2.5 text-tche-text outline-none focus:border-tche-dim"/>
+				<button type="submit" class="bg-tche-gold text-tche-bg border-none py-3 font-[family-name:var(--font-condensed)] font-extrabold text-base tracking-wide rounded mt-3 hover:opacity-90">CRIAR MERCADO</button>
+			</form>
+		</div>
+	}
+}
+
+templ AdminUsersPage(nav NavVM, rows []AdminUserRowVM, errMsg string) {
+	@Layout("Admin · Usuários", nav) {
+		<div class="max-w-[700px] mx-auto p-6">
+			<h1 class="font-[family-name:var(--font-condensed)] text-3xl font-extrabold tracking-tight mb-6">Admin · Usuários</h1>
+			if errMsg != "" {
+				<div class="bg-tche-red/10 border border-tche-red/30 text-tche-red text-[13px] rounded p-3 mb-4">{ errMsg }</div>
+			}
+			<table class="w-full border border-tche-border rounded overflow-hidden text-sm">
+				<thead>
+					<tr class="bg-tche-card text-tche-muted text-[11px] uppercase tracking-wide text-left">
+						<th class="px-4 py-3 font-semibold">Email</th>
+						<th class="px-4 py-3 font-semibold">Desde</th>
+						<th class="px-4 py-3 font-semibold">Admin</th>
+						<th class="px-4 py-3 font-semibold">Ações</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, row := range rows {
+						<tr class="border-t border-tche-border">
+							<td class="px-4 py-3">{ row.Email }</td>
+							<td class="px-4 py-3 text-tche-muted">{ row.CreatedAtLabel }</td>
+							<td class="px-4 py-3 text-tche-muted">
+								if row.IsAdmin {
+									<span class="text-tche-green">Sim</span>
+								} else {
+									<span>Não</span>
+								}
+							</td>
+							<td class="px-4 py-3">
+								if !row.IsAdmin {
+									<form method="POST" action="/admin/users/promote" class="inline">
+										<input type="hidden" name="email" value={ row.Email }/>
+										<button type="submit" class="text-tche-gold text-[13px] hover:underline">Promover</button>
+									</form>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}

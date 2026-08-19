@@ -1,0 +1,22 @@
+package views
+
+templ AuthCard(title string, errMsg string, formAction string, submitLabel string, footerText string, footerHref string, footerLinkLabel string) {
+	@Layout(title, NavVM{}) {
+		<div class="max-w-[380px] mx-auto mt-24 px-6">
+			<div class="bg-tche-card border border-tche-border rounded p-8">
+				<h1 class="font-[family-name:var(--font-condensed)] text-3xl font-extrabold tracking-tight mb-6">{ title }</h1>
+				if errMsg != "" {
+					<div class="bg-tche-red/10 border border-tche-red/30 text-tche-red text-[13px] rounded p-3 mb-4">{ errMsg }</div>
+				}
+				<form method="POST" action={ templ.URL(formAction) } class="flex flex-col gap-3">
+					<input name="email" type="email" placeholder="email" required class="bg-tche-bg border border-tche-border rounded px-3.5 py-2.5 text-tche-text placeholder-tche-muted outline-none focus:border-tche-dim"/>
+					<input name="password" type="password" placeholder="senha" required class="bg-tche-bg border border-tche-border rounded px-3.5 py-2.5 text-tche-text placeholder-tche-muted outline-none focus:border-tche-dim"/>
+					<button type="submit" class="bg-tche-gold text-tche-bg border-none py-3 font-[family-name:var(--font-condensed)] font-extrabold text-base tracking-wide rounded mt-2 hover:opacity-90">{ submitLabel }</button>
+				</form>
+				<div class="mt-5 text-center text-[13px] text-tche-muted">
+					{ footerText } <a href={ templ.URL(footerHref) } class="text-tche-text underline underline-offset-2">{ footerLinkLabel }</a>
+				</div>
+			</div>
+		</div>
+	}
+}

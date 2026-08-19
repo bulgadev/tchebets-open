@@ -1,0 +1,45 @@
+package views
+
+import (
+	"strconv"
+)
+
+templ MarketCard(m MarketCardVM) {
+	<a href={ templ.URL("/markets/" + m.ID) } class="block bg-tche-card border border-tche-border p-5 rounded hover:border-tche-dim transition-colors">
+		<div class="flex items-center justify-between mb-3.5">
+			<div class="flex items-center gap-2">
+				if m.IsLive {
+					<div class="flex items-center gap-1 bg-tche-red/10 border border-tche-red/30 px-2 py-0.5 rounded">
+						<span class="w-1.5 h-1.5 bg-tche-red rounded-full inline-block"></span>
+						<span class="text-[11px] font-bold text-tche-red tracking-wide">AO VIVO</span>
+					</div>
+				}
+			</div>
+			if m.LowLiquidity {
+				<span class="text-[11px] text-tche-orange font-semibold">⚠ Pouca liquidez</span>
+			}
+		</div>
+		<div class="text-base font-semibold text-tche-text mb-5 leading-tight min-h-[44px]">{ m.Question }</div>
+		<div class="h-[5px] flex overflow-hidden rounded mb-3.5 bg-tche-border">
+			<div class="bg-tche-green" style={ "width: " + strconv.Itoa(m.SimPct) + "%" }></div>
+			<div class="flex-1 bg-tche-red"></div>
+		</div>
+		<div class="flex justify-between items-end mb-5">
+			<div>
+				<div class="font-[family-name:var(--font-condensed)] text-5xl font-extrabold text-tche-green leading-none tracking-tight">{ strconv.Itoa(m.SimPct) }%</div>
+				<div class="text-[11px] text-tche-muted font-bold tracking-widest mt-1">SIM</div>
+			</div>
+			<div class="text-right">
+				<div class="font-[family-name:var(--font-condensed)] text-5xl font-extrabold text-tche-red leading-none tracking-tight">{ strconv.Itoa(m.NaoPct) }%</div>
+				<div class="text-[11px] text-tche-muted font-bold tracking-widest mt-1">NÃO</div>
+			</div>
+		</div>
+		<div class="flex gap-2 mb-2">
+			<div class="flex-1 border border-tche-green text-tche-green py-2.5 text-center font-[family-name:var(--font-condensed)] font-bold rounded">APOSTAR SIM</div>
+			<div class="flex-1 border border-tche-red text-tche-red py-2.5 text-center font-[family-name:var(--font-condensed)] font-bold rounded">APOSTAR NÃO</div>
+		</div>
+		<div class="text-xs text-tche-muted flex justify-between">
+			<span>{ strconv.Itoa(m.BettorCount) } apostas · Vol. { m.VolumeLabel }</span>
+		</div>
+	</a>
+}

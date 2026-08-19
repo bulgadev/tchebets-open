@@ -1,0 +1,42 @@
+services:
+  # On the shared server, every Tchebet service stays inside its own Docker
+  # network. The Cloudflare Tunnel is the only public entry point.
+  postgres:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  # The host can reach Solana Devnet but the Docker bridge cannot. Bind this
+  # fixed-upstream proxy on the host LAN IP and accept only the Tchebet bridge
+  # subnet; wallet-backend is the sole consumer and LAN clients receive 403.
+  solana-rpc-proxy:
+    image: tchebet-solana-rpc-proxy:latest
+    container_name: tchebet-solana-rpc-proxy
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - RPC_PROXY_LISTEN_ADDR=192.168.1.5:8899
+      - SOLANA_RPC_UPSTREAM=https://api.devnet.solana.com
+
+  wallet-backend:
+    environment:
+      - SOLANA_RPC_URL=http://192.168.1.5:8899
+    depends_on:
+      solana-rpc-proxy:
+        condition: service_started
+
+  # The server's Docker bridge cannot reach Cloudflare's tunnel edge. Keep the
+  # frontend loopback-only and let only cloudflared use the host network.
+  cloudflared:
+    network_mode: host
+    command:
+      - --metrics
+      - 127.0.0.1:20241
+      - tunnel
+      - run
+      - --credentials-file
+      - /run/secrets/tchebets.json
+      - --url
+      - http://127.0.0.1:8081
+      - eb54f4c2-38a4-455f-9d78-4397d999de3f

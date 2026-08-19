@@ -1,0 +1,49 @@
+package views
+
+templ Layout(title string, nav NavVM) {
+	<!DOCTYPE html>
+	<html lang="pt-BR">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<title>{ title } · TCHEBET</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com"/>
+		<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+		<link rel="stylesheet" href="/static/css/tailwind.css"/>
+		<script src="/static/js/htmx.min.js"></script>
+		<script src="/static/js/alpinejs.min.js" defer></script>
+	</head>
+	<body class="min-h-screen bg-tche-bg text-tche-text font-[family-name:var(--font-body)] text-[15px] leading-relaxed">
+		@Nav(nav)
+		<div class="pt-14">
+			{ children... }
+		</div>
+	</body>
+	</html>
+}
+
+templ Nav(nav NavVM) {
+	<nav class="fixed top-0 left-0 right-0 h-14 bg-tche-bg border-b border-tche-border flex items-center px-6 gap-3 z-50">
+		<a href="/" class="flex items-baseline gap-0 select-none">
+			<span class="font-[family-name:var(--font-condensed)] font-extrabold text-2xl text-tche-gold tracking-tight">TCHE</span><span class="font-[family-name:var(--font-condensed)] font-extrabold text-2xl text-tche-text tracking-tight">BET</span>
+		</a>
+		<span class="bg-tche-card border border-tche-border px-2 py-0.5 rounded text-[11px] text-tche-muted font-semibold uppercase tracking-wide">Novo Hamburgo</span>
+		<div class="flex-1"></div>
+		if nav.LoggedIn {
+			<div id="nav-balance" class="flex items-center gap-2 border border-tche-border px-3.5 py-1.5 rounded bg-tche-card">
+				<span class="text-xs text-tche-muted">Saldo</span>
+				<span class="font-[family-name:var(--font-condensed)] font-bold text-xl tracking-tight">{ nav.BalanceRs }</span>
+			</div>
+			<a href="/profile" class="bg-tche-gold text-tche-bg px-5 py-2 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded hover:opacity-90">DEPOSITAR</a>
+			if nav.IsAdmin {
+				<a href="/admin/markets" class="border border-tche-border text-tche-muted px-4 py-2 font-[family-name:var(--font-condensed)] font-bold text-sm rounded hover:text-tche-text">ADMIN</a>
+			}
+			<form method="POST" action="/logout">
+				<button type="submit" class="text-tche-muted text-sm hover:text-tche-text">Sair</button>
+			</form>
+		} else {
+			<a href="/login" class="text-tche-muted text-sm hover:text-tche-text">Entrar</a>
+			<a href="/register" class="bg-tche-gold text-tche-bg px-5 py-2 font-[family-name:var(--font-condensed)] font-extrabold text-sm tracking-wide rounded hover:opacity-90">CRIAR CONTA</a>
+		}
+	</nav>
+}
